@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Remover - Remove BG Online</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-container">
+        <div class="background-image"></div>
+    </div>
+
+    <div class="container">
+        <div class="glass-card">
+            <h1 class="title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                Background Remover
+            </h1>
+            <p class="subtitle">Hapus background gambar secara otomatis dengan AI</p>
+
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept="image/*" hidden>
+                <div class="upload-content">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <h3>Klik atau Drop gambar di sini</h3>
+                    <p>Mendukung: JPG, PNG, JPEG</p>
+                </div>
+            </div>
+
+            <div class="preview-container" id="previewContainer" style="display: none;">
+                <div class="image-comparison">
+                    <div class="image-box">
+                        <h4>Original</h4>
+                        <div class="image-wrapper">
+                            <img id="originalImage" alt="Original">
+                        </div>
+                    </div>
+                    <div class="image-box">
+                        <h4>Result</h4>
+                        <div class="image-wrapper">
+                            <img id="resultImage" alt="Result" style="display: none;">
+                            <div class="loading-spinner" id="loadingSpinner">
+                                <div class="spinner"></div>
+                                <p>Processing...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons" id="actionButtons" style="display: none;">
+                    <button class="btn btn-download" id="downloadBtn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download
+                    </button>
+                    <button class="btn btn-reset" id="resetBtn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"/>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
