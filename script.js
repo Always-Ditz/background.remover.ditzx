@@ -78,12 +78,18 @@ async function handleFile(file) {
 // Remove background
 async function removeBackground(file) {
     try {
-        const formData = new FormData();
-        formData.append('image', file);
-
+        // Convert file to base64
+        const base64 = await fileToBase64(file);
+        
         const response = await fetch('/api/remove', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                image: base64,
+                filename: file.name
+            })
         });
 
         if (!response.ok) {
@@ -174,6 +180,16 @@ function reset() {
     }
 }
 
+// Helper: Convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 // Helper: Convert blob to base64
 function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -182,4 +198,4 @@ function blobToBase64(blob) {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-}
+                            }
