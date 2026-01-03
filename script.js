@@ -78,22 +78,19 @@ async function handleFile(file) {
 // Remove background
 async function removeBackground(file) {
     try {
-        // Convert file to base64
-        const base64 = await fileToBase64(file);
+        console.log('[REMOVEBG] Starting process...');
         
+        const formData = new FormData();
+        formData.append('image', file);
+
         const response = await fetch('/api/remove', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                image: base64,
-                filename: file.name
-            })
+            body: formData
         });
 
         if (!response.ok) {
-            throw new Error('Gagal memproses gambar');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
 
         const blob = await response.blob();
@@ -105,22 +102,34 @@ async function removeBackground(file) {
             loadingSpinner.style.display = 'none';
             resultImage.style.display = 'block';
             actionButtons.style.display = 'flex';
+            console.log('[REMOVEBG] Process complete!');
         };
         resultImage.src = imageUrl;
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[REMOVEBG ERROR]', error);
         loadingSpinner.style.display = 'none';
-        alert('❌ Terjadi kesalahan! ' + error.message + '\n\nSilakan coba lagi.');
+        alert('❌ Terjadi kesalahan saat memproses gambar!\n\n' + 
+              'Error: ' + error.message + '\n\n' +
+              'Kemungkinan penyebab:\n' +
+              '• Server sedang sibuk\n' +
+              '• Ukuran gambar terlalu besar\n' +
+              '• Format gambar tidak didukung\n\n' +
+              'Silakan coba lagi!');
         reset();
     }
 }
 
 // Download button
 downloadBtn.addEventListener('click', async () => {
-    if (!processedImageBlob) return;
+    if (!processedImageBlob) {
+        alert('⚠️ Tidak ada gambar untuk didownload!');
+        return;
+    }
 
     try {
+        console.log('[DOWNLOAD] Starting download...');
+        
         const response = await fetch('/api/download', {
             method: 'POST',
             headers: {
@@ -143,12 +152,16 @@ downloadBtn.addEventListener('click', async () => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        
+        // Cleanup
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        console.log('[DOWNLOAD] Download complete!');
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[DOWNLOAD ERROR]', error);
         
         // Fallback: direct download
+        console.log('[DOWNLOAD] Using fallback method...');
         const url = URL.createObjectURL(processedImageBlob);
         const a = document.createElement('a');
         a.href = url;
@@ -156,7 +169,7 @@ downloadBtn.addEventListener('click', async () => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 });
 
@@ -180,16 +193,6 @@ function reset() {
     }
 }
 
-// Helper: Convert file to base64
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 // Helper: Convert blob to base64
 function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
@@ -198,4 +201,4 @@ function blobToBase64(blob) {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-                            }
+                        }
