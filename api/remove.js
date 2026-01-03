@@ -1,12 +1,5 @@
 import axios from 'axios';
 import FormData from 'form-data';
-import { Readable } from 'stream';
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -24,55 +17,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read raw body
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
+    const { image, filename } = req.body;
 
-    // Parse multipart form data manually
-    const contentType = req.headers['content-type'] || '';
-    const boundary = contentType.split('boundary=')[1];
-    
-    if (!boundary) {
-      return res.status(400).json({ error: 'Invalid content type' });
+    if (!image) {
+      return res.status(400).json({ error: 'No image provided' });
     }
 
-    // Split by boundary
-    const parts = buffer.toString('binary').split(`--${boundary}`);
-    
-    let fileBuffer = null;
-    let filename = 'image.jpg';
+    // Convert base64 to buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    const fname = filename || 'image.jpg';
 
-    // Extract file from parts
-    for (const part of parts) {
-      if (part.includes('Content-Disposition') && part.includes('name="image"')) {
-        // Extract filename
-        const filenameMatch = part.match(/filename="([^"]+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-        
-        // Extract file content
-        const contentStart = part.indexOf('\r\n\r\n') + 4;
-        const contentEnd = part.lastIndexOf('\r\n');
-        
-        if (contentStart > 3 && contentEnd > contentStart) {
-          const binaryContent = part.substring(contentStart, contentEnd);
-          fileBuffer = Buffer.from(binaryContent, 'binary');
-        }
-        break;
-      }
-    }
-
-    if (!fileBuffer || fileBuffer.length === 0) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
-
-    console.log(`[REMOVEBG] File received: ${filename}, size: ${(fileBuffer.length / 1024).toFixed(2)} KB`);
-
-    // Get token and task ID from iloveimg
+    // Get token and task ID
     console.log('[REMOVEBG] Getting token...');
     const html = await axios.get('https://www.iloveimg.com/remove-background', {
       timeout: 15000
@@ -82,16 +38,16 @@ export default async function handler(req, res) {
     const task = html.data.match(/taskId\s*=\s*'([^']+)'/)?.[1];
 
     if (!token || !task) {
-      throw new Error('Failed to get token or task ID from iloveimg');
+      throw new Error('Failed to get token or task ID');
     }
     
-    console.log('[REMOVEBG] Token obtained successfully');
+    console.log('[REMOVEBG] Token obtained');
 
-    // Upload image to iloveimg
-    console.log('[REMOVEBG] Uploading image...');
+    // Upload image
+    console.log('[REMOVEBG] Uploading...');
     
     const uploadForm = new FormData();
-    uploadForm.append('name', filename);
+    uploadForm.append('name', fname);
     uploadForm.append('chunk', '0');
     uploadForm.append('chunks', '1');
     uploadForm.append('task', task);
@@ -101,14 +57,12 @@ export default async function handler(req, res) {
     uploadForm.append('pdfresetforms', '0');
     uploadForm.append('v', 'web.0');
     uploadForm.append('file', fileBuffer, {
-      filename: filename,
+      filename: fname,
       contentType: 'image/jpeg'
     });
 
-    const upload = await axios.post(
-      'https://api5g.iloveimg.com/v1/upload',
-      uploadForm,
-      {
+    const upload = await axios.post('https://api5g.iloveimg.com/v1/upload',
+      uploadForm, {
         timeout: 30000,
         headers: {
           ...uploadForm.getHeaders(),
@@ -119,20 +73,18 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('[REMOVEBG] Upload successful');
+    console.log('[REMOVEBG] Upload success');
 
     // Process remove background
-    console.log('[REMOVEBG] Processing background removal...');
+    console.log('[REMOVEBG] Processing...');
     
     const params = new URLSearchParams({
       task,
       server_filename: upload.data.server_filename
     });
 
-    const process = await axios.post(
-      'https://api5g.iloveimg.com/v1/removebackground',
-      params.toString(),
-      {
+    const process = await axios.post('https://api5g.iloveimg.com/v1/removebackground',
+      params.toString(), {
         timeout: 60000,
         responseType: 'arraybuffer',
         headers: {
@@ -144,7 +96,7 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('[REMOVEBG] Background removal complete!');
+    console.log('[REMOVEBG] Process complete!');
 
     // Return processed image
     res.setHeader('Content-Type', 'image/png');
@@ -153,13 +105,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[REMOVEBG ERROR]', error.message);
-    
-    // Return detailed error
-    const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
     res.status(500).json({ 
       error: 'Failed to process image',
-      message: errorMessage,
-      details: error.response?.status ? `HTTP ${error.response.status}` : 'Network error'
+      message: error.message 
     });
   }
 }
