@@ -1,56 +1,32 @@
 import axios from 'axios';
 import FormData from 'form-data';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Parse multipart form data
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
+    const { image, filename } = req.body;
 
-    // Extract file from form data
-    const boundary = req.headers['content-type'].split('boundary=')[1];
-    const parts = buffer.toString('binary').split(`--${boundary}`);
-    
-    let fileBuffer = null;
-    let filename = 'image.jpg';
-
-    for (const part of parts) {
-      if (part.includes('Content-Disposition')) {
-        const nameMatch = part.match(/name="([^"]+)"/);
-        const filenameMatch = part.match(/filename="([^"]+)"/);
-        
-        if (nameMatch && nameMatch[1] === 'image') {
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-          
-          const contentStart = part.indexOf('\r\n\r\n') + 4;
-          const contentEnd = part.lastIndexOf('\r\n');
-          
-          if (contentStart > 3 && contentEnd > contentStart) {
-            const binaryContent = part.substring(contentStart, contentEnd);
-            fileBuffer = Buffer.from(binaryContent, 'binary');
-          }
-        }
-      }
+    if (!image) {
+      return res.status(400).json({ error: 'No image provided' });
     }
 
-    if (!fileBuffer) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
+    // Convert base64 to buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    const fname = filename || 'image.jpg';
 
     // Get token and task ID
     console.log('[REMOVEBG] Getting token...');
@@ -71,7 +47,7 @@ export default async function handler(req, res) {
     console.log('[REMOVEBG] Uploading...');
     
     const uploadForm = new FormData();
-    uploadForm.append('name', filename);
+    uploadForm.append('name', fname);
     uploadForm.append('chunk', '0');
     uploadForm.append('chunks', '1');
     uploadForm.append('task', task);
@@ -81,7 +57,7 @@ export default async function handler(req, res) {
     uploadForm.append('pdfresetforms', '0');
     uploadForm.append('v', 'web.0');
     uploadForm.append('file', fileBuffer, {
-      filename: filename,
+      filename: fname,
       contentType: 'image/jpeg'
     });
 
@@ -134,4 +110,4 @@ export default async function handler(req, res) {
       message: error.message 
     });
   }
-}
+      }
